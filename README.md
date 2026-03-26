@@ -19,26 +19,29 @@ uv pip install -e ".[all]"
 ## CLI Usage
 
 ```bash
-# Look up a cadastral parcel by national reference
-ancpi parcel 102507
+# Look up a cadastral parcel by number (searches label field)
+ancpi parcel 105966
+
+# Look up by full national cadastral reference (county.zone.number)
+ancpi parcel AB.1017.70112
 
 # Look up by INSPIRE ID
 ancpi parcel --inspire-id RO.83.40991.102507
 
-# Find parcels at a geographic point (lon,lat in WGS84)
-ancpi parcel --at 26.1,44.43
+# Find parcels at a geographic point (lat,lon) — most reliable
+ancpi parcel --at 44.43,26.1
 
 # Find parcels in a bounding box
-ancpi parcel --bbox 26.0,44.3,26.2,44.5
+ancpi parcel --bbox 44.3,26.0,44.5,26.2
 
 # Find buildings at a point
-ancpi building --at 26.1,44.43
+ancpi building --at 44.43,26.1
 
 # Look up administrative unit by NUTS code
 ancpi admin RO321
 
 # Look up address at a point
-ancpi address --at 26.1,44.43
+ancpi address --at 44.43,26.1
 
 # Show layer metadata
 ancpi info CP
@@ -161,7 +164,7 @@ if PYPROJ_AVAILABLE:
 
 ## Known Limitations
 
-- **CP and BU query endpoints are frequently down** (502/timeout). Metadata always works. The client tries multiple server paths with fallback.
+- **CP and BU query endpoints are frequently down** (502/timeout). Even when up, attribute queries (by cadastral number) are very slow and often time out — spatial queries (`--at`, `--bbox`) are more reliable. Metadata (`ancpi info`) always works. The client tries multiple server paths with fallback.
 - **SSL certificate is broken** — `verify_ssl=False` is the default.
 - **Max 1000 records per query** — use bbox queries to page through large areas.
 - **~70.5% coverage** — not all properties are registered in the system.

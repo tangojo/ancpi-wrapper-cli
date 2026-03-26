@@ -131,11 +131,16 @@ def cli(ctx: click.Context, host: str | None, fmt: str | None, output_file: str 
 @cli.command()
 @click.argument("cadastral_ref", required=False)
 @click.option("--inspire-id", default=None, help="Look up by INSPIRE local ID")
-@click.option("--at", "at_coord", default=None, help="Spatial query at lon,lat")
-@click.option("--bbox", default=None, help="Spatial query in xmin,ymin,xmax,ymax")
+@click.option("--at", "at_coord", default=None, help="Spatial query at lat,lon")
+@click.option("--bbox", default=None, help="Spatial query in lat_min,lon_min,lat_max,lon_max")
 @click.pass_context
 def parcel(ctx: click.Context, cadastral_ref: str | None, inspire_id: str | None, at_coord: str | None, bbox: str | None) -> None:
-    """Query cadastral parcels."""
+    """Query cadastral parcels.
+
+    CADASTRAL_REF can be a bare number (105966) or full ref (AB.1017.70112).
+
+    Note: attribute lookups on CP are slow/unreliable. Spatial queries (--at, --bbox) tend to work better.
+    """
     client: ANCPIClient = ctx.obj["client"]
     fmt = _get_format(ctx.obj["fmt"])
 
@@ -156,12 +161,18 @@ def parcel(ctx: click.Context, cadastral_ref: str | None, inspire_id: str | None
         _output_result(result, fmt, ctx.obj["output_file"], ctx.obj["no_geometry"], "CP")
     except ANCPIError as e:
         console.print(f"[red]Error:[/] {e}")
+        if cadastral_ref or inspire_id:
+            console.print(
+                "[dim]Tip: CP attribute queries are often unreliable. "
+                "Try a spatial query instead:[/]\n"
+                "[dim]  ancpi parcel --at <lat>,<lon>[/]"
+            )
         raise SystemExit(1)
 
 
 @cli.command()
-@click.option("--at", "at_coord", default=None, help="Spatial query at lon,lat")
-@click.option("--bbox", default=None, help="Spatial query in xmin,ymin,xmax,ymax")
+@click.option("--at", "at_coord", default=None, help="Spatial query at lat,lon")
+@click.option("--bbox", default=None, help="Spatial query in lat_min,lon_min,lat_max,lon_max")
 @click.pass_context
 def building(ctx: click.Context, at_coord: str | None, bbox: str | None) -> None:
     """Query buildings."""
@@ -185,7 +196,7 @@ def building(ctx: click.Context, at_coord: str | None, bbox: str | None) -> None
 
 
 @cli.command()
-@click.option("--at", "at_coord", required=True, help="Spatial query at lon,lat")
+@click.option("--at", "at_coord", required=True, help="Spatial query at lat,lon")
 @click.pass_context
 def address(ctx: click.Context, at_coord: str) -> None:
     """Query addresses."""
@@ -265,19 +276,22 @@ def info(ctx: click.Context, theme: str) -> None:
 
 
 def _parse_coords(s: str) -> tuple[float, float]:
-    """Parse 'lon,lat' string."""
+    """Parse 'lat,lon' string, return (lon, lat) for internal use."""
     parts = s.split(",")
     if len(parts) != 2:
-        raise click.BadParameter(f"Expected lon,lat but got '{s}'")
-    return float(parts[0].strip()), float(parts[1].strip())
+        raise click.BadParameter(f"Expected lat,lon but got '{s}'")
+    lat = float(parts[0].strip())
+    lon = float(parts[1].strip())
+    return lon, lat
 
 
 def _parse_bbox(s: str) -> tuple[float, float, float, float]:
-    """Parse 'xmin,ymin,xmax,ymax' string."""
+    """Parse 'lat_min,lon_min,lat_max,lon_max' string, return (xmin,ymin,xmax,ymax)."""
     parts = s.split(",")
     if len(parts) != 4:
-        raise click.BadParameter(f"Expected xmin,ymin,xmax,ymax but got '{s}'")
-    return tuple(float(p.strip()) for p in parts)  # type: ignore
+        raise click.BadParameter(f"Expected lat_min,lon_min,lat_max,lon_max but got '{s}'")
+    lat_min, lon_min, lat_max, lon_max = (float(p.strip()) for p in parts)
+    return lon_min, lat_min, lon_max, lat_max
 
 
 if __name__ == "__main__":

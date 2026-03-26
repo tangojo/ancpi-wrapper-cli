@@ -58,11 +58,20 @@ class ANCPIClient:
     # --- Public query methods ---
 
     def get_parcel(self, cadastral_ref: str) -> QueryResult:
-        """Look up cadastral parcel(s) by national cadastral reference number."""
-        return self._query(
-            CP_CADASTRAL_PARCEL,
-            where=f"nationalCadastralRef='{cadastral_ref}'",
-        )
+        """Look up cadastral parcel(s) by cadastral reference.
+
+        Accepts either:
+        - Full national ref: 'AB.1017.70112' (county.zone.number)
+        - Bare number: '105966' (searches by label field)
+
+        Note: attribute queries on CP are slow/unreliable on ANCPI's servers.
+        Spatial queries (get_parcels_at) are generally more reliable.
+        """
+        if "." in cadastral_ref:
+            where = f"nationalCadastralRef='{cadastral_ref}'"
+        else:
+            where = f"label='{cadastral_ref}'"
+        return self._query(CP_CADASTRAL_PARCEL, where=where)
 
     def get_parcel_by_inspire_id(self, inspire_id: str) -> QueryResult:
         """Look up parcel by INSPIRE local ID (e.g. 'RO.83.40991.102507')."""
